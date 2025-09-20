@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-FileMonitorWorkerService-4baa545b-28ee-44f0-a582-b0b7dbb274a7</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Repositories\" />
+  </ItemGroup>
+</Project>
