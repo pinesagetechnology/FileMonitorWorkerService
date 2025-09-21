@@ -68,7 +68,7 @@ namespace FileMonitorWorkerService
                 {
                     var uploader = scope.ServiceProvider.GetRequiredService<IUploadProcessService>();
                     var config = scope.ServiceProvider.GetRequiredService<IConfigurationService>();
-                    var maxConcurrent = await config.GetValueAsync<int?>(Constants.UploadMaxConcurrentUploads) ?? 1;
+                    var maxConcurrent = await config.GetValueAsync<int>(Constants.UploadMaxConcurrentUploads);
                     await uploader.ProcessPendingBatchAsync(maxConcurrent, stoppingToken);
                 }
 

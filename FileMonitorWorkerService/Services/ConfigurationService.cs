@@ -6,12 +6,11 @@ namespace FileMonitorWorkerService.Services
     public interface IConfigurationService
     {
         Task<string?> GetValueAsync(string key);
-        Task<T?> GetValueAsync<T>(string key);
+        Task<T> GetValueAsync<T>(string key);
         Task<Dictionary<string, string>> GetCategoryAsync(string category);
         Task<bool> KeyExistsAsync(string key);
         Task DeleteAsync(string key);
         Task<IEnumerable<Configuration>> GetAllAsync();
-        Task SetValueAsync(string key, string value, string? description = null, string? category = null);
     }
 
     public class ConfigurationService : IConfigurationService
@@ -140,46 +139,5 @@ namespace FileMonitorWorkerService.Services
 
         }
 
-        public async Task SetValueAsync(string key, string value, string? description = null, string? category = null)
-        {
-            _logger.LogDebug("Setting configuration value for key: {Key} = {Value} (Category: {Category})",
-                key, value, category ?? "None");
-
-            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value))
-            {
-                _logger.LogError("Configuration key cannot be null or empty");
-                throw new ArgumentNullException("Configuration key cannot be null or empty", nameof(key));
-            }
-
-            var existing = await _repository.GetByKeyAsync(key);
-
-            if (existing != null)
-            {
-                _logger.LogDebug("Updating existing configuration for key: {Key}", key);
-                existing.Value = value;
-                existing.UpdatedAt = DateTime.UtcNow;
-                if (!string.IsNullOrEmpty(description))
-                    existing.Description = description;
-                if (!string.IsNullOrEmpty(category))
-                    existing.Category = category;
-            }
-            else
-            {
-                _logger.LogDebug("Creating new configuration for key: {Key}", key);
-
-                var config = new Configuration
-                {
-                    Key = key,
-                    Value = value,
-                    Description = description,
-                    Category = category,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                await _repository.AddAsync(config);
-
-                _logger.LogInformation("Configuration updated successfully: {Key} = {Value}", key, value);
-            }
-        }
     }
 }

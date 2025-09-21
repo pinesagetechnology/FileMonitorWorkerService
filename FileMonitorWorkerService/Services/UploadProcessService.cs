@@ -6,7 +6,6 @@ namespace FileMonitorWorkerService.Services
 {
     public interface IUploadProcessService
     {
-        Task StartProcess(CancellationToken cancellationToken = default);
         Task<int> ProcessPendingBatchAsync(int maxItems = 10, CancellationToken cancellationToken = default);
     }
 
@@ -26,15 +25,6 @@ namespace FileMonitorWorkerService.Services
             _uploadQueueRepository = uploadQueueRepository;
             _configurationService = configurationService;
             _azureStorageService = azureStorageService;
-        }
-
-        public async Task StartProcess(CancellationToken cancellationToken = default)
-        {
-            _logger.LogInformation("UploadProcessService.StartProcess invoked");
-
-            var maxConcurrent = await _configurationService.GetValueAsync<int?>(Constants.UploadMaxConcurrentUploads) ?? 2;
-            var processed = await ProcessPendingBatchAsync(maxConcurrent, cancellationToken);
-            _logger.LogInformation("Upload batch processed: {Count} item(s)", processed);
         }
 
         public async Task<int> ProcessPendingBatchAsync(int maxItems = 10, CancellationToken cancellationToken = default)

@@ -18,9 +18,6 @@ namespace FileMonitorWorkerService.Models
         [StringLength(500)]
         public string? FolderPath { get; set; }
 
-        [StringLength(500)]
-        public string? ArchiveFolderPath { get; set; }
-
         [StringLength(100)]
         public string? FilePattern { get; set; } = "*.*";
 
