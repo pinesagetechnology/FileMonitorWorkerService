@@ -359,7 +359,7 @@ namespace FileMonitorWorkerService.Services
                 if (!fileInfo.Exists || fileInfo.Length == 0)
                     return false;
 
-                var maxSizeMB = await _configurationService.GetValueAsync<int?>(Constants.UploadMaxFileSizeMB) ?? 100;
+                var maxSizeMB = await _configurationService.GetValueAsync<int>(Constants.UploadMaxFileSizeMB);
 
                 if (fileInfo.Length > maxSizeMB * 1024 * 1024)
                 {

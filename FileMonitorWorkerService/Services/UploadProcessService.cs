@@ -86,8 +86,8 @@ namespace FileMonitorWorkerService.Services
                 await _uploadQueueRepository.UpdateAsync(item);
 
                 // Archive/Delete as per config
-                var archiveOnSuccess = await _configurationService.GetValueAsync<bool?>(Constants.UploadArchiveOnSuccess) ?? true;
-                var deleteOnSuccess = await _configurationService.GetValueAsync<bool?>(Constants.UploadDeleteOnSuccess) ?? false;
+                var archiveOnSuccess = await _configurationService.GetValueAsync<bool>(Constants.UploadArchiveOnSuccess);
+                var deleteOnSuccess = await _configurationService.GetValueAsync<bool>(Constants.UploadDeleteOnSuccess);
 
                 if (deleteOnSuccess && File.Exists(item.FilePath))
                 {
@@ -113,8 +113,8 @@ namespace FileMonitorWorkerService.Services
 
         private async Task<bool> MarkAsFailedAsync(UploadQueue item, string error)
         {
-            var maxRetries = await _configurationService.GetValueAsync<int?>(Constants.UploadMaxRetries) ?? 3;
-            var retryDelaySeconds = await _configurationService.GetValueAsync<int?>(Constants.UploadRetryDelaySeconds) ?? 30;
+            var maxRetries = await _configurationService.GetValueAsync<int>(Constants.UploadMaxRetries);
+            var retryDelaySeconds = await _configurationService.GetValueAsync<int>(Constants.UploadRetryDelaySeconds);
 
             item.ErrorMessage = error;
             if (item.AttemptCount >= maxRetries)
