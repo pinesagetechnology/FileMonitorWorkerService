@@ -43,6 +43,12 @@ namespace FileMonitorWorkerService.Services
         {
             try
             {
+                if (await _azureStorageService.IsConnectedAsync() == false)
+                {
+                    _logger.LogWarning("Azure Storage service is not connected. Skipping upload for file: {File}", item.FilePath);
+                    return false;
+                }
+
                 // Mark as Uploading
                 item.Status = FileStatus.Uploading;
                 item.LastAttemptAt = DateTime.UtcNow;
