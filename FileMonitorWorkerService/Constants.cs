@@ -12,7 +12,6 @@
         public const string UploadDeleteOnSuccess = "Upload.DeleteOnSuccess";
         public const string UploadNotifyOnCompletion = "Upload.NotifyOnCompletion";
         public const string UploadNotifyOnFailure = "Upload.NotifyOnFailure";
-        public const string FileMonitorDefaultFilePattern = "FileMonitor.DefaultFilePattern";
         public const string AzureStorageConnectionString = "Azure.StorageConnectionString";
         public const string AzureDefaultContainer = "Azure.DefaultContainer";
 
