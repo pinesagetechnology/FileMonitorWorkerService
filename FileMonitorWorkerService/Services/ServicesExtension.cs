@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileMonitorWorkerService.Services
+﻿namespace FileMonitorWorkerService.Services
 {
     public static class ServiceLayerExtension
     {
@@ -15,6 +9,8 @@ namespace FileMonitorWorkerService.Services
             services.AddTransient<IFolderWatcherService, FolderWatcherService>();
             services.AddScoped<IAzureStorageService, AzureStorageService>();
             services.AddScoped<IUploadProcessService, UploadProcessService>();
+            services.AddScoped<IHeartbeatService, HeartBeatService>();
+
             return services;
         }
     }

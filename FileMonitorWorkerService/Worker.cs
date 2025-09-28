@@ -1,7 +1,6 @@
 using FileMonitorWorkerService.Models;
 using FileMonitorWorkerService.Services;
 using System.Collections.Concurrent;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace FileMonitorWorkerService
 {
@@ -89,6 +88,8 @@ namespace FileMonitorWorkerService
                     var maxConcurrent = await config.GetValueAsync<int>(Constants.UploadMaxConcurrentUploads);
                     await uploader.ProcessPendingBatchAsync(maxConcurrent, stoppingToken);
                 }
+
+                await HeartBeatUpdate();
 
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), stoppingToken);
             }
@@ -193,6 +194,15 @@ namespace FileMonitorWorkerService
 
             }
 
+        }
+
+        private async Task HeartBeatUpdate()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var heartbeatService = scope.ServiceProvider.GetRequiredService<IHeartbeatService>();
+                await heartbeatService.Upsert();
+            }
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)

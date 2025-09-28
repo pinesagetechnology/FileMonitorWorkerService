@@ -17,6 +17,8 @@ namespace FileMonitorWorkerService.Data
         
         public DbSet<WatcherError> WatcherErrors { get; set; }
 
+        public DbSet<FileMonitorServiceHeartBeat> FileMonitorServiceHeartBeats { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
