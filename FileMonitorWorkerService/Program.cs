@@ -1,7 +1,6 @@
 using FileMonitorWorkerService;
 using FileMonitorWorkerService.Data;
 using FileMonitorWorkerService.Services;
-using Microsoft.Extensions.Hosting.WindowsServices; // Add this using directive for Windows services support
 
 var builder = Host.CreateDefaultBuilder(args);
 

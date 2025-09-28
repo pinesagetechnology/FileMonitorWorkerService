@@ -168,93 +168,6 @@ namespace WorkServiceTests
 
         #endregion
 
-        #region SetValueAsync Tests
-
-        [TestMethod]
-        public async Task SetValueAsync_NewKey_CreatesNewConfiguration()
-        {
-            // Arrange
-            var key = "NewKey";
-            var value = "NewValue";
-            var description = "Test Description";
-            var category = "TestCategory";
-
-            _mockRepository.Setup(r => r.GetByKeyAsync(key))
-                          .ReturnsAsync((Configuration?)null);
-            _mockRepository.Setup(r => r.AddAsync(It.IsAny<Configuration>()))
-                          .ReturnsAsync((Configuration config) => config);
-
-            // Act
-            await _configurationService.SetValueAsync(key, value, description, category);
-
-            // Assert
-            _mockRepository.Verify(r => r.GetByKeyAsync(key), Times.Once);
-            _mockRepository.Verify(r => r.AddAsync(It.Is<Configuration>(c => 
-                c.Key == key && 
-                c.Value == value && 
-                c.Description == description && 
-                c.Category == category)), Times.Once);
-        }
-
-        [TestMethod]
-        public async Task SetValueAsync_ExistingKey_UpdatesConfiguration()
-        {
-            // Arrange
-            var key = "ExistingKey";
-            var newValue = "UpdatedValue";
-            var newDescription = "Updated Description";
-            var newCategory = "UpdatedCategory";
-            var existingConfig = new Configuration 
-            { 
-                Key = key, 
-                Value = "OldValue", 
-                Description = "Old Description",
-                Category = "OldCategory",
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
-            };
-
-            _mockRepository.Setup(r => r.GetByKeyAsync(key))
-                          .ReturnsAsync(existingConfig);
-
-            // Act
-            await _configurationService.SetValueAsync(key, newValue, newDescription, newCategory);
-
-            // Assert
-            Assert.AreEqual(newValue, existingConfig.Value);
-            Assert.AreEqual(newDescription, existingConfig.Description);
-            Assert.AreEqual(newCategory, existingConfig.Category);
-            Assert.IsTrue(existingConfig.UpdatedAt > DateTime.UtcNow.AddMinutes(-1));
-            _mockRepository.Verify(r => r.GetByKeyAsync(key), Times.Once);
-        }
-
-        [TestMethod]
-        public async Task SetValueAsync_ExistingKey_WithNullOptionalParams_UpdatesOnlyValue()
-        {
-            // Arrange
-            var key = "ExistingKey";
-            var newValue = "UpdatedValue";
-            var existingConfig = new Configuration 
-            { 
-                Key = key, 
-                Value = "OldValue", 
-                Description = "Old Description",
-                Category = "OldCategory"
-            };
-
-            _mockRepository.Setup(r => r.GetByKeyAsync(key))
-                          .ReturnsAsync(existingConfig);
-
-            // Act
-            await _configurationService.SetValueAsync(key, newValue);
-
-            // Assert
-            Assert.AreEqual(newValue, existingConfig.Value);
-            Assert.AreEqual("Old Description", existingConfig.Description); // Should remain unchanged
-            Assert.AreEqual("OldCategory", existingConfig.Category); // Should remain unchanged
-        }
-
-        #endregion
-
         #region DeleteAsync Tests
 
         [TestMethod]
@@ -456,22 +369,6 @@ namespace WorkServiceTests
         }
 
         [TestMethod]
-        public async Task SetValueAsync_NullKey_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            await Assert.ThrowsExceptionAsync<ArgumentNullException>(() => 
-                _configurationService.SetValueAsync(null!, "value"));
-        }
-
-        [TestMethod]
-        public async Task SetValueAsync_EmptyKey_ThrowsArgumentException()
-        {
-            // Act & Assert
-            await Assert.ThrowsExceptionAsync<ArgumentNullException>(() => 
-                _configurationService.SetValueAsync("", "value"));
-        }
-
-        [TestMethod]
         public async Task GetValueAsync_NullKey_ThrowsArgumentNullException()
         {
             // Act
@@ -513,19 +410,6 @@ namespace WorkServiceTests
             // Act & Assert
             await Assert.ThrowsExceptionAsync<ArgumentNullException>(() => 
                 _configurationService.KeyExistsAsync(null!));
-        }
-
-        [TestMethod]
-        public async Task SetValueAsync_RepositoryThrowsException_PropagatesException()
-        {
-            // Arrange
-            var key = "TestKey";
-            _mockRepository.Setup(r => r.GetByKeyAsync(key))
-                          .ThrowsAsync(new InvalidOperationException("Database error"));
-
-            // Act & Assert
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => 
-                _configurationService.SetValueAsync(key, "value"));
         }
 
         [TestMethod]

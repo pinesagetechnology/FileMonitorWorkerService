@@ -1,7 +1,7 @@
 using FileMonitorWorkerService.Models;
 using FileMonitorWorkerService.Services;
 using System.Collections.Concurrent;
-using Microsoft.Extensions.DependencyInjection;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace FileMonitorWorkerService
 {
@@ -11,7 +11,7 @@ namespace FileMonitorWorkerService
         private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, (IServiceScope Scope, IFolderWatcherService Watcher)> _activeWatchers = new();
 
-        public Worker(ILogger<Worker> logger, 
+        public Worker(ILogger<Worker> logger,
             IServiceProvider serviceProvider)
         {
             _logger = logger;
@@ -31,7 +31,6 @@ namespace FileMonitorWorkerService
 
             _logger.LogInformation($"Fetch processing interval seconds: {intervalSeconds}");
 
-
             // Start a watcher per data source
             IEnumerable<FileDataSourceConfig> datasourceList;
             using (var scope = _serviceProvider.CreateScope())
@@ -42,16 +41,35 @@ namespace FileMonitorWorkerService
 
             foreach (var datasource in datasourceList)
             {
-                _logger.LogInformation($"Starting to monitor folder: {datasource.FolderPath} for datasource: {datasource.Name}");
-                var scope = _serviceProvider.CreateScope();
-                var watcher = scope.ServiceProvider.GetRequiredService<IFolderWatcherService>();
-                await watcher.StartAsync(datasource, async (id, error) =>
+                IServiceScope? scope = null;
+                try
                 {
-                    _logger.LogError("Watcher error for datasource {Id}: {Error}", id, error);
-                    await Task.CompletedTask;
-                });
+                    _logger.LogInformation($"Starting to monitor folder: {datasource.FolderPath} for datasource: {datasource.Name}");
+                    scope = _serviceProvider.CreateScope();
+                    var watcher = scope.ServiceProvider.GetRequiredService<IFolderWatcherService>();
 
-                _activeWatchers.TryAdd(datasource.Name, (scope, watcher));
+                    if (datasource.IsEnabled == false)
+                    {
+                        _logger.LogInformation($"Datasource {datasource.Name} is disabled. Skipping watcher start.");
+                        scope.Dispose();
+                        continue;
+                    }
+
+                    await watcher.StartAsync(datasource, async (id, error) =>
+                    {
+                        _logger.LogError("Watcher error for datasource {Id}: {Error}", id, error);
+                        await Task.CompletedTask;
+                    });
+
+                    _activeWatchers.TryAdd(datasource.Name, (scope, watcher));
+                    scope = null; // Ownership transferred to dictionary
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error starting watcher for datasource: {datasource.Name}");
+                    scope?.Dispose();
+                    continue;
+                }
             }
 
             while (!stoppingToken.IsCancellationRequested)
@@ -78,49 +96,102 @@ namespace FileMonitorWorkerService
 
         private async Task RefreshWatchersAsync()
         {
+            IEnumerable<FileDataSourceConfig> datasourceList;
 
             using (var scope = _serviceProvider.CreateScope())
             {
                 var dataSourceService = scope.ServiceProvider.GetRequiredService<IDataSourceService>();
-                var datasourceList = await dataSourceService.GetAllDataSourcesAsync();
-
-                foreach (var datasource in datasourceList)
-                {
-                    if (datasource.IsRefreshing)
-                    {
-                        var itemToRefresh = _activeWatchers.FirstOrDefault(x => x.Key == datasource.Name);
-                        if (!string.IsNullOrEmpty(itemToRefresh.Key))
-                        {
-                            _logger.LogInformation($"Stopping existing watcher for datasource: {datasource.Name}");
-                            try
-                            {
-                                await itemToRefresh.Value.Watcher.StopAsync();
-                            }
-                            finally
-                            {
-                                itemToRefresh.Value.Scope.Dispose();
-                            }
-                            _activeWatchers.TryRemove(itemToRefresh.Key, out var _);
-                        }
-
-                        _logger.LogInformation($"Refreshing folder watcher: {datasource.FolderPath} for datasource: {datasource.Name}");
-                        
-                        var watcher = scope.ServiceProvider.GetRequiredService<IFolderWatcherService>();
-                        await watcher.StartAsync(datasource, async (id, error) =>
-                        {
-                            _logger.LogError("Watcher error for datasource {Id}: {Error}", id, error);
-                            await Task.CompletedTask;
-                        });
-
-                        // Reset the refreshing flag for all data sources
-                        datasource.IsRefreshing = false;
-                        await dataSourceService.UpdateDataSourcesIsrefreshingFlagAsync(datasource);
-
-                        _activeWatchers.TryAdd(datasource.Name, (scope, watcher));
-                    }
-                }
+                datasourceList = await dataSourceService.GetAllDataSourcesAsync();
             }
 
+            foreach (var datasource in datasourceList)
+            {
+                var itemToRefresh = _activeWatchers.FirstOrDefault(x => x.Key == datasource.Name);
+
+                if (!string.IsNullOrEmpty(itemToRefresh.Key))
+                {
+                    if (datasource.IsRefreshing || datasource.IsEnabled == false)
+                    {
+                        _logger.LogInformation($"Stopping existing watcher for datasource: {datasource.Name}");
+                        try
+                        {
+                            await itemToRefresh.Value.Watcher.StopAsync();
+                        }
+                        finally
+                        {
+                            itemToRefresh.Value.Scope.Dispose();
+                        }
+                        _activeWatchers.TryRemove(itemToRefresh.Key, out var _);
+                    }
+
+                    _logger.LogInformation($"Refreshing folder watcher: {datasource.FolderPath} for datasource: {datasource.Name}");
+
+                    if (datasource.IsRefreshing && datasource.IsEnabled)
+                    {
+                        IServiceScope? scope = null;
+                        try
+                        {
+                            _logger.LogInformation($"Restarting to monitor folder: {datasource.FolderPath} for datasource: {datasource.Name}");
+                            scope = _serviceProvider.CreateScope();
+                            var watcher = scope.ServiceProvider.GetRequiredService<IFolderWatcherService>();
+
+                            await watcher.StartAsync(datasource, async (id, error) =>
+                            {
+                                _logger.LogError("Watcher error for datasource {Id}: {Error}", id, error);
+                                await Task.CompletedTask;
+                            });
+
+                            // Reset the refreshing flag for this specific data source
+                            datasource.IsRefreshing = false;
+                            using (var updateScope = _serviceProvider.CreateScope())
+                            {
+                                var dataSourceService = updateScope.ServiceProvider.GetRequiredService<IDataSourceService>();
+                                await dataSourceService.UpdateDataSourcesIsrefreshingFlagAsync(datasource);
+                            }
+
+                            _activeWatchers.TryAdd(datasource.Name, (scope, watcher));
+                            scope = null; // Ownership transferred to dictionary
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error starting watcher for datasource: {datasource.Name}");
+                            scope?.Dispose();
+                            continue;
+                        }
+
+                    }
+
+                }
+                else
+                {
+                    // Start new watcher for datasources that are enabled but not currently running
+                    if (datasource.IsEnabled && !_activeWatchers.ContainsKey(datasource.Name))
+                    {
+                        IServiceScope? scope = null;
+                        try
+                        {
+                            _logger.LogInformation($"Starting new watcher for datasource: {datasource.Name}");
+                            scope = _serviceProvider.CreateScope();
+                            var watcher = scope.ServiceProvider.GetRequiredService<IFolderWatcherService>();
+
+                            await watcher.StartAsync(datasource, async (id, error) =>
+                            {
+                                _logger.LogError("Watcher error for datasource {Id}: {Error}", id, error);
+                                await Task.CompletedTask;
+                            });
+
+                            _activeWatchers.TryAdd(datasource.Name, (scope, watcher));
+                            scope = null; // Ownership transferred to dictionary
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error starting new watcher for datasource: {datasource.Name}");
+                            scope?.Dispose();
+                        }
+                    }
+                }
+
+            }
 
         }
 
